@@ -8,7 +8,11 @@ field_list:
     horizontal:
       label: "Horizontal"
       description: "It will align the field items horizontally."
+    horizontal_label:
+      label: "Horizontal with label"
+      description: "It will align the field items horizontally and show the label on top."
   fields:
+    label: "Details"
     items:
       type: "array"
       label: "Field items"

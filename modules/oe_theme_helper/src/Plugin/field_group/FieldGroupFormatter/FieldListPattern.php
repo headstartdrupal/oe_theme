@@ -39,6 +39,9 @@ class FieldListPattern extends PatternFormatterBase {
       '#fields' => [],
     ];
 
+    if ($this->getSetting('variant') === 'horizontal_label') {
+      $pattern['#label'] = $this->getLabel();
+    }
     foreach (Element::children($element) as $field_name) {
       // Assign field label and content to the pattern's fields.
       $pattern['#fields']['items'][] = [
