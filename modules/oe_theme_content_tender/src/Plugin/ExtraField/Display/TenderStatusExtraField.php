@@ -81,34 +81,32 @@ class TenderStatusExtraField extends ExtraFieldDisplayFormattedBase implements C
       $opening_date = '';
     }
     else {
-      $opening_date = new DateTime($entity->get('oe_tender_opening_date')->value);
+      $opening_date = DateTime::createFromFormat('Y-m-d', $entity->get('oe_tender_opening_date')->value);
     }
-    // Get the latest closing date, this field is mandatory.
-    $closing_dates = $entity->get('oe_tender_deadlines')->getValue();
-    $closing_date = array_pop($closing_dates);
-    foreach ($closing_dates as $item) {
-      $date = new DateTime($item['value']);
-      if ($date > $closing_date) {
-        $closing_date = $date;
-      }
-    }
+    // Get closing date.
+    $closing_date = new DateTime($entity->get('oe_tender_deadline')->value);
+    // Set markup.
     $build = [];
-    if ($now < $opening_date) {
+    if (empty($opening_date)) {
+      $build = [
+        '#markup' => '<div class="ecl-u-text-uppercase">' . $this->t('N/A') . '</div>',
+      ];
+    }
+    elseif ($now < $opening_date) {
       $build = [
         '#markup' => '<div class="ecl-u-text-uppercase">' . $this->t('upcoming') . '</div>',
       ];
     }
-    if ($opening_date < $now && $now < $closing_date) {
+    elseif ($opening_date < $now && $now < $closing_date) {
       $build = [
         '#markup' => '<div class="ecl-u-text-uppercase">' . $this->t('open') . '</div>',
       ];
     }
-    if ($now > $closing_date) {
+    elseif ($now > $closing_date) {
       $build = [
         '#markup' => '<div class="ecl-u-text-uppercase">' . $this->t('closed') . '</div>',
       ];
     }
-
     return $build;
   }
 

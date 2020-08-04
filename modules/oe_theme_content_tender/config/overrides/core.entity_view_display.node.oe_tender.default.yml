@@ -10,7 +10,7 @@ dependencies:
     - field.field.node.oe_tender.oe_subject
     - field.field.node.oe_tender.oe_summary
     - field.field.node.oe_tender.oe_teaser
-    - field.field.node.oe_tender.oe_tender_deadlines
+    - field.field.node.oe_tender.oe_tender_deadline
     - field.field.node.oe_tender.oe_tender_opening_date
     - node.type.oe_tender
   module:
@@ -40,7 +40,7 @@ third_party_settings:
         - oe_reference
         - oe_publication_date
         - oe_tender_opening_date
-        - oe_tender_deadlines
+        - oe_tender_deadline
         - oe_departments
       parent_name: group_in_page_navigation
       weight: 1
@@ -100,7 +100,7 @@ content:
     third_party_settings: {  }
     type: string
     region: content
-  oe_tender_deadlines:
+  oe_tender_deadline:
     weight: 4
     label: above
     settings:
