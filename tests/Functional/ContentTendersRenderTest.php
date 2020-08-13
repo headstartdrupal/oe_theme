@@ -4,17 +4,37 @@ declare(strict_types = 1);
 
 namespace Drupal\Tests\oe_theme\Functional;
 
+use Drupal\Tests\BrowserTestBase;
+
 /**
  * Tests that our Call for tender (oe_tender) content type render.
  */
-class ContentTendersRenderTest extends ContentRenderTestBase {
+class ContentTendersRenderTest extends BrowserTestBase {
+
+  /**
+   * {@inheritdoc}
+   */
+  public static $modules = [
+    'config',
+    'system',
+    'path',
+    'oe_theme_helper',
+    'oe_theme_content_tender',
+  ];
 
   /**
    * {@inheritdoc}
    */
   protected function setUp() {
-    self::$modules[] = 'oe_theme_content_tender';
     parent::setUp();
+
+    // Enable and set OpenEuropa Theme as default.
+    \Drupal::service('theme_installer')->install(['oe_theme']);
+    \Drupal::configFactory()->getEditable('system.theme')->set('default', 'oe_theme')->save();
+
+    // Rebuild the ui_pattern definitions to collect the ones provided by
+    // oe_theme itself.
+    \Drupal::service('plugin.manager.ui_patterns')->clearCachedDefinitions();
   }
 
   /**
@@ -26,7 +46,7 @@ class ContentTendersRenderTest extends ContentRenderTestBase {
     $file->setPermanent();
     $file->save();
 
-    $media = $this->getStorage('media')->create([
+    $media = \Drupal::entityTypeManager()->getStorage('media')->create([
       'bundle' => 'document',
       'name' => 'Test document',
       'oe_media_file' => [
@@ -40,7 +60,7 @@ class ContentTendersRenderTest extends ContentRenderTestBase {
 
     // Create a Call for tenders node.
     /** @var \Drupal\node\Entity\Node $node */
-    $node = $this->getStorage('node')->create([
+    $node = \Drupal::entityTypeManager()->getStorage('node')->create([
       'type' => 'oe_tender',
       'title' => 'Test tender node',
       'body' => 'Body',
@@ -61,23 +81,22 @@ class ContentTendersRenderTest extends ContentRenderTestBase {
       ],
       'oe_reference' => '100',
       'oe_departments' => '',
-      'oe_subject' => 'Tender reference',
       'oe_teaser' => '',
+      'oe_subject' => 'http://data.europa.eu/uxp/1000',
+      'oe_content_content_owner' => 'http://publications.europa.eu/resource/authority/corporate-body/COMMU',
       'uid' => 0,
       'status' => 1,
     ]);
     $node->save();
 
-    $this->drupalGet($node->toUrl());
+    $this->drupalGet('/node/' . $node->id());
 
-    // Assert in-line navigation.
+    /** @var Drupal\Tests\WebAssert $session */
     $session = $this->assertSession();
+
     $navigation = $session->elementExists('css', '.ecl-inpage-navigation');
     $navigation_items = $navigation->findAll('css', '.ecl-inpage-navigation__item a');
-    foreach ($navigation_items as $navigation_item) {
-      // @todo : Uncomment after EWPP-55 resolution.
-      // $session->elementExists('css', $navigation_item->getAttribute('href'));
-    }
+    $this->assertCount(3, $navigation_items);
 
     $content = $session->elementExists('css', '.ecl-col-lg-9');
     $session->elementsCount('css', '.ecl-col-lg-9', 1);
@@ -97,28 +116,34 @@ class ContentTendersRenderTest extends ContentRenderTestBase {
     // Assert NOT strike deadline.
     $this->assertFalse($content->find('xpath', '//*[text() = "Deadline date"]/following-sibling::dd/div')->hasClass('ecl-u-type-strike'));
 
-    // Assert status CLOSED.
-    $node->set('oe_tender_deadline', ['value' => '2020-05-31T23:30:00'])->save();
-    $this->getSession()->reload();
-    $this->assertEquals('closed', $content->find('xpath', '//*[text() = "Status"]/following-sibling::dd[1]')->getText());
-    // Assert strike deadline.
-    $content->find('xpath', '//*[text() = "Deadline date"]/following-sibling::dd/div')->hasClass('ecl-u-type-strike');
-
     // Assert status UPCOMING.
     $node->set('oe_tender_opening_date', ['value' => date('Y') + 1 . '-05-31']);
     $node->set('oe_tender_deadline', ['value' => date('Y') + 1 . '-06-30T23:30:00'])->save();
-    $this->getSession()->reload();
+
+    $this->drupalGet('/node/' . $node->id());
+
     $this->assertEquals('upcoming', $content->find('xpath', '//*[text() = "Status"]/following-sibling::dd[1]')->getText());
     // Assert NOT strike deadline.
     $this->assertFalse($content->find('xpath', '//*[text() = "Deadline date"]/following-sibling::dd/div')->hasClass('ecl-u-type-strike'));
 
+    // Assert status CLOSED.
+    $node->set('oe_tender_opening_date', ['value' => '2020-05-31']);
+    $node->set('oe_tender_deadline', ['value' => '2020-05-31T23:30:00'])->save();
+
+    $this->drupalGet('/node/' . $node->id());
+
+    $this->assertEquals('closed', $content->find('xpath', '//*[text() = "Status"]/following-sibling::dd[1]')->getText());
+    // Assert strike deadline.
+    $content->find('xpath', '//*[text() = "Deadline date"]/following-sibling::dd/div')->hasClass('ecl-u-type-strike');
+
     // Assert status empty.
     $node->set('oe_tender_opening_date', ['value' => ''])->save();
-    $this->getSession()->reload();
-    $this->assertEquals('N/A', $content->find('xpath', '//*[text() = "Status"]/following-sibling::dd[1]')->getText());
-    // Assert NOT strike deadline.
-    $this->assertFalse($content->find('xpath', '//*[text() = "Deadline date"]/following-sibling::dd/div')->hasClass('ecl-u-type-strike'));
 
+    $this->drupalGet('/node/' . $node->id());
+
+    $this->assertEquals('N/A', $content->find('xpath', '//*[text() = "Status"]/following-sibling::dd[1]')->getText());
+    // Assert strike deadline.
+    $content->find('xpath', '//*[text() = "Deadline date"]/following-sibling::dd/div')->hasClass('ecl-u-type-strike');
   }
 
 }
