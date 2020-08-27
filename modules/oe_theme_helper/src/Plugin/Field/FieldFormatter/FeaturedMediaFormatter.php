@@ -4,6 +4,7 @@ declare(strict_types = 1);
 
 namespace Drupal\oe_theme_helper\Plugin\Field\FieldFormatter;
 
+use Drupal\Core\Cache\CacheableMetadata;
 use Drupal\Core\Field\FieldDefinitionInterface;
 use Drupal\Core\Field\FieldItemInterface;
 use Drupal\Core\Field\FieldItemListInterface;
@@ -14,6 +15,7 @@ use Symfony\Component\DependencyInjection\ContainerInterface;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\Core\Entity\EntityRepositoryInterface;
 use Drupal\oe_theme\ValueObject\MediaValueObject;
+use Drupal\Core\Entity\Entity\EntityViewDisplay;
 
 /**
  * Display a featured media field using the ECL media container.
@@ -142,19 +144,35 @@ class FeaturedMediaFormatter extends EntityReferenceFormatterBase {
    * {@inheritdoc}
    */
   protected function viewElement(FieldItemInterface $item, string $langcode): array {
+    $pattern = [];
     // Create media value object.
     $media = $item->entity;
     if (!$media instanceof MediaInterface) {
-      return [];
+      return $pattern;
     }
+    $image_style = $this->getSetting('image_style');
+    $view_mode = 'oe_theme_main_content';
+    $cacheability = CacheableMetadata::createFromRenderArray($pattern);
     // Retrieve the correct media translation.
     $media = $this->entityRepository->getTranslationFromContext($media, $langcode);
+    // Caches are handled by the formatter usually. Since we are not rendering
+    // the original render arrays, we need to propagate our caches.
+    $cacheability->addCacheableDependency($media);
+    $cacheability->addCacheableDependency(\Drupal::service('entity_type.manager')->getStorage('media_type')->load($media->bundle()));
+    $cacheability->addCacheableDependency(EntityViewDisplay::collectRenderDisplay($media, $view_mode));
 
+    $media_value = MediaValueObject::fromMediaObject($media, $image_style, $view_mode);
     $pattern = [
       '#type' => 'pattern',
       '#id' => 'media_container',
-      '#fields' => MediaValueObject::fromMediaObject($media, $item->caption, $this->getSetting('image_style'), 'oe_theme_main_content')->getArray(),
+      '#fields' => [
+        'embedded_media' => $media_value->getEmbedMedia(),
+        'image' => $media_value->getImage(),
+        'ratio' => $media_value->getRatio(),
+        'description' => $item->caption,
+      ],
     ];
+    $cacheability->applyTo($pattern);
     return $pattern;
   }
 

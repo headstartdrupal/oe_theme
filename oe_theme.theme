@@ -17,17 +17,13 @@ use Drupal\Core\Url;
 use Drupal\file\FileInterface;
 use Drupal\media\MediaInterface;
 use Drupal\media\Plugin\media\Source\Image;
-use Drupal\media\Plugin\media\Source\OEmbed;
-use Drupal\media_avportal\Plugin\media\Source\MediaAvPortalPhotoSource;
 use Drupal\media_avportal\Plugin\media\Source\MediaAvPortalSourceInterface;
-use Drupal\media_avportal\Plugin\media\Source\MediaAvPortalVideoSource;
 use Drupal\oe_theme\ValueObject\FileValueObject;
 use Drupal\oe_theme\ValueObject\DateValueObject;
 use Drupal\oe_theme\ValueObject\GalleryItemValueObject;
 use Drupal\oe_theme\ValueObject\ImageValueObject;
 use Drupal\oe_theme\ValueObject\MediaValueObject;
 use Drupal\oe_theme_helper\EuropeanUnionLanguages;
-use Drupal\oe_media_iframe\Plugin\media\Source\Iframe;
 
 /**
  * Implements hook_form_FORM_ID_alter().
@@ -974,6 +970,8 @@ function oe_theme_preprocess_paragraph__oe_text_feature_media(array &$variables)
     return;
   }
 
+  $cacheability = CacheableMetadata::createFromRenderArray($variables);
+
   /** @var \Drupal\media\Entity\Media $media */
   $media = $paragraph->get('field_oe_media')->entity;
   if (!$media instanceof MediaInterface) {
@@ -982,10 +980,20 @@ function oe_theme_preprocess_paragraph__oe_text_feature_media(array &$variables)
   }
   // Retrieve the correct media translation.
   $media = \Drupal::service('entity.repository')->getTranslationFromContext($media, $paragraph->language()->getId());
-  $variables = array_merge($variables, MediaValueObject::fromMediaObject($media, $paragraph->field_oe_plain_text_long->value, 'oe_theme_medium_no_crop', 'oe_theme_main_content')->getArray());
-  $variables['video'] = $variables['embedded_media'];
-  $variables['video_ratio'] = $variables['ratio'];
-  return;
+
+  // Caches are handled by the formatter usually. Since we are not rendering
+  // the original render arrays, we need to propagate our caches to the
+  // paragraph template.
+  $cacheability->addCacheableDependency($media);
+  $cacheability->addCacheableDependency(\Drupal::service('entity_type.manager')->getStorage('media_type')->load($media->bundle()));
+  $cacheability->addCacheableDependency(EntityViewDisplay::collectRenderDisplay($media, 'oe_theme_medium_no_crop'));
+
+  $media_value = MediaValueObject::fromMediaObject($media, 'oe_theme_medium_no_crop', 'oe_theme_main_content');
+  $variables['embedded_media'] = $media_value->getEmbedMedia();
+  $variables['image'] = $media_value->getImage();
+  $variables['ratio'] = $media_value->getRatio();
+
+  $cacheability->applyTo($variables);
 }
 
 /**

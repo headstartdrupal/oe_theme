@@ -37,34 +37,6 @@ class MediaValueObject extends ValueObjectBase {
   protected $image;
 
   /**
-   * Media sources.
-   *
-   * @var array
-   */
-  protected $sources;
-
-  /**
-   * Media tracks.
-   *
-   * @var array
-   */
-  protected $tracks;
-
-  /**
-   * Media caption.
-   *
-   * @var string
-   */
-  protected $description;
-
-  /**
-   * Enable debug.
-   *
-   * @var bool
-   */
-  protected $compliance;
-
-  /**
    * MediaValueObject constructor.
    *
    * @param string $embedded_media
@@ -73,23 +45,11 @@ class MediaValueObject extends ValueObjectBase {
    *   Video aspect ratio.
    * @param ImageValueObject $image
    *   Image value object.
-   * @param array $sources
-   *   Media sources.
-   * @param array $tracks
-   *   Video tracks.
-   * @param string $description
-   *   Media caption.
-   * @param bool $compliance
-   *   Enable debug.
    */
-  private function __construct(string $embedded_media = '', string $ratio = '', ImageValueObject $image = NULL, array $sources = [], array $tracks = [], string $description = '', bool $compliance = FALSE) {
+  private function __construct(string $embedded_media = '', string $ratio = '', ImageValueObject $image = NULL) {
     $this->embeddedMedia = $embedded_media;
     $this->ratio = $ratio;
     $this->image = $image;
-    $this->sources = $sources;
-    $this->tracks = $tracks;
-    $this->description = $description;
-    $this->compliance = $compliance;
   }
 
   /**
@@ -99,11 +59,7 @@ class MediaValueObject extends ValueObjectBase {
     return new static(
       $values['embedded_media'],
       $values['ratio'],
-      $values['image'],
-      $values['sources'],
-      $values['tracks'],
-      $values['description'],
-      $values['compliance']
+      $values['image']
     );
   }
 
@@ -138,46 +94,6 @@ class MediaValueObject extends ValueObjectBase {
   }
 
   /**
-   * Getter.
-   *
-   * @return array
-   *   Property value.
-   */
-  public function getSources(): array {
-    return $this->sources;
-  }
-
-  /**
-   * Getter.
-   *
-   * @return array
-   *   Property value.
-   */
-  public function getTracks(): array {
-    return $this->tracks;
-  }
-
-  /**
-   * Getter.
-   *
-   * @return string
-   *   Property value.
-   */
-  public function getDescription(): string {
-    return $this->description;
-  }
-
-  /**
-   * Getter.
-   *
-   * @return bool
-   *   Property value.
-   */
-  public function isCompliance(): bool {
-    return $this->compliance;
-  }
-
-  /**
    * {@inheritdoc}
    */
   public function getArray(): array {
@@ -185,10 +101,6 @@ class MediaValueObject extends ValueObjectBase {
       'embedded_media' => $this->getEmbedMedia(),
       'ratio' => $this->getRatio(),
       'image' => $this->getImage(),
-      'sources' => $this->getSources(),
-      'tracks' => $this->getTracks(),
-      'description' => $this->getDescription(),
-      'compliance' => $this->isCompliance(),
     ];
   }
 
@@ -197,8 +109,6 @@ class MediaValueObject extends ValueObjectBase {
    *
    * @param \Drupal\media\Entity\Media $media
    *   Drupal Media element.
-   * @param string $caption
-   *   Media caption.
    * @param string $image_style
    *   Image style.
    * @param string $view_mode
@@ -207,17 +117,13 @@ class MediaValueObject extends ValueObjectBase {
    * @return static
    *   A media value object instance.
    */
-  public static function fromMediaObject(Media $media, string $caption = '', $image_style = '', string $view_mode = '') {
+  public static function fromMediaObject(Media $media, string $image_style = '', string $view_mode = '') {
     // Get the media source.
     $source = $media->getSource();
     $values = [
       'embedded_media' => '',
       'ratio' => '16-9',
       'image' => NULL,
-      'sources' => [],
-      'tracks' => [],
-      'description' => '',
-      'compliance' => FALSE,
     ];
     if ($source instanceof MediaAvPortalVideoSource || $source instanceof OEmbed || $source instanceof Iframe) {
       $media_type = \Drupal::service('entity_type.manager')->getStorage('media_type')->load($media->bundle());
@@ -245,19 +151,20 @@ class MediaValueObject extends ValueObjectBase {
         }
       }
       // Render the result.
-      $values['embedded_media'] = \Drupal::service('renderer')->renderRoot($values['embedded_media'])->__toString();
+      $values['embedded_media'] = \Drupal::service('renderer')->renderPlain($values['embedded_media'])->__toString();
     }
     else {
-      $values['image'] = ImageValueObject::fromStyledImageItem($media->get('thumbnail')->first(), $image_style);
+      if ($image_style === '') {
+        $values['image'] = ImageValueObject::fromImageItem($media->get('thumbnail')->first());
+      }
+      else {
+        $values['image'] = ImageValueObject::fromStyledImageItem($media->get('thumbnail')->first(), $image_style);
+      }
     }
     return new static(
       $values['embedded_media'],
       $values['ratio'],
-      $values['image'],
-      $values['sources'],
-      $values['tracks'],
-      $values['description'] = $caption,
-      $values['compliance']
+      $values['image']
     );
 
   }

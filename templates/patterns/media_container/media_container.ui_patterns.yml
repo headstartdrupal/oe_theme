@@ -38,7 +38,7 @@ media_container:
     tracks:
       type: "array"
       label: "Tracks"
-      description: "Items of sources"
+      description: "Items of sources subtitle"
       preview:
         src: "https://placeimg.com/1200/900/arch"
         kind: ""

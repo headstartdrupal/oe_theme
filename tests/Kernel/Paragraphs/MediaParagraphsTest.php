@@ -127,7 +127,7 @@ class MediaParagraphsTest extends ParagraphsTestBase {
     $paragraph->save();
 
     // Add Bulgarian translation.
-    $paragraph->addTranslation('bg', ['field_oe_title' => 'Title bg'])->save();
+    $paragraph->addTranslation('bg', ['field_oe_title' => 'Title bg', 'field_oe_plain_text_long' => 'Caption'])->save();
 
     // Test the translated media is rendered with the translated paragraph.
     foreach ($paragraph->getTranslationLanguages() as $paragraph_langcode => $paragraph_language) {
